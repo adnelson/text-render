@@ -14,7 +14,6 @@ import qualified Data.Text as T
 import Text.Parsec (ParseError)
 
 type Name = Text
-data ErrorList = EL [Text] deriving (Show, Eq)
 
 -- | A class for pretty printing, and in general, for "showing" as a `Text`.
 class Show a => Render a where

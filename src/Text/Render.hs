@@ -1,14 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Text.Render (
-    Render(..),
+    Render(..), Indenter, Indentable(..),
+    indented, wrapIndented, inNewLine,
     renderTicks
   ) where
 
+import ClassyPrelude
 import qualified Prelude as P
-import Prelude (($), (.), map, Int, Double, Functor(..), Show(..),
-                Eq(..), Bool, Integer, Double, Monad(..))
 import Control.Monad.Trans (MonadIO(..))
-import Data.Monoid
+import Control.Monad.Reader (ReaderT(..), MonadReader(..), (<=<), (>=>), ask,
+                             asks, runReaderT)
+import Control.Monad.Writer (WriterT(..), MonadWriter(..), runWriterT)
+import Control.Monad.State.Strict (MonadState, StateT, State, get, gets,
+                                   modify, put, liftM, liftIO, runState,
+                                   runStateT, execState, execStateT,
+                                   evalState, evalStateT)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Parsec (ParseError)
@@ -27,6 +34,9 @@ class Show a => Render a where
   renderIO :: MonadIO m => a -> m Text
   renderIO = return . render
 
+  renderIndentedAtLevel :: Int -> a -> Text
+  renderIndentedAtLevel _ = render
+
 instance Render Int
 instance Render Bool
 instance Render Integer
@@ -41,3 +51,28 @@ instance Render a => Render [a] where
 -- | Renders and surrounds in backticks. Useful for printing user input.
 renderTicks :: Render a => a -> Text
 renderTicks x = "`" <> render x <> "`"
+
+type Indenter = ReaderT Int (WriterT Text (State Int)) ()
+
+class Indentable a where
+  renderI :: a -> Indenter
+
+indented :: Indenter -> Indenter
+indented action = do
+  c <- get
+  put (c+1)
+  action
+  put c
+
+inNewLine :: Indenter -> Indenter
+inNewLine action = do
+  ilevel <- ask
+  current <- get
+  tell $ "\n" <> T.replicate (ilevel * current) " "
+  action
+
+wrapIndented :: Indentable a => Text -> Text -> [a] -> Indenter
+wrapIndented start finish things = do
+  tell start
+  indented $ mapM_ (inNewLine . renderI) things
+  inNewLine $ tell finish

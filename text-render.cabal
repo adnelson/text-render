@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                text-render
-version:             0.1.0.1
+version:             0.1.0.2
 synopsis:            A type class for rendering objects as text, pretty-printing, etc.
 -- description:
 homepage:            http://github.com/thinkpad20/text-render

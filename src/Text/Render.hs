@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Text.Render (
-    Render(..), Indenter, Indentable(..),
-    indented, wrapIndented, inNewLine,
+    Render(..), Indenter,
+    indented, wrapIndented, inNewLine, renderIndented,
+    renderIndentedStartingAt,
     renderTicks
   ) where
 
@@ -27,15 +28,17 @@ class Show a => Render a where
   -- | Render the object as a `Text`.
   render :: a -> Text
   render = T.pack . P.show
+
   -- | Many types of objects need to be rendered in parentheses.
   renderParens :: a -> Text
   renderParens = render
+
   -- | Render in the `IO` monad. Useful for objects containing IORefs.
   renderIO :: MonadIO m => a -> m Text
   renderIO = return . render
 
-  renderIndentedAtLevel :: Int -> a -> Text
-  renderIndentedAtLevel _ = render
+  renderI :: a -> Indenter
+  renderI = tell . render
 
 instance Render Int
 instance Render Bool
@@ -54,9 +57,6 @@ renderTicks x = "`" <> render x <> "`"
 
 type Indenter = ReaderT Int (WriterT Text (State Int)) ()
 
-class Indentable a where
-  renderI :: a -> Indenter
-
 indented :: Indenter -> Indenter
 indented action = do
   c <- get
@@ -71,8 +71,15 @@ inNewLine action = do
   tell $ "\n" <> T.replicate (ilevel * current) " "
   action
 
-wrapIndented :: Indentable a => Text -> Text -> [a] -> Indenter
+wrapIndented :: Render a => Text -> Text -> [a] -> Indenter
 wrapIndented start finish things = do
   tell start
   indented $ mapM_ (inNewLine . renderI) things
   inNewLine $ tell finish
+
+renderIndented :: Render a => Int -> a -> Text
+renderIndented = renderIndentedStartingAt 0
+
+renderIndentedStartingAt :: Render a => Int -> Int -> a -> Text
+renderIndentedStartingAt start level e =
+  snd $ evalState (runWriterT (runReaderT (renderI e) level)) start

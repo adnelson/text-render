@@ -1,7 +1,7 @@
 { mkDerivation, base, mtl, parsec, stdenv, text, classy-prelude }:
 mkDerivation {
   pname = "text-render";
-  version = "0.1.0.2";
+  version = "0.1.0.3";
   src = ./.;
   buildDepends = [ base mtl parsec text classy-prelude ];
   homepage = "http://github.com/thinkpad20/text-render";
